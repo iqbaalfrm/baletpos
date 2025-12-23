@@ -9,6 +9,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class OperationalCostResource extends Resource
 {
@@ -16,11 +18,14 @@ class OperationalCostResource extends Resource
 
     // Ganti icon biar sesuai (uang keluar)
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    
+
     // Ganti label menu
     protected static ?string $navigationLabel = 'Biaya Operasional';
     protected static ?string $pluralModelLabel = 'Biaya Operasional';
     
+    // Grouping menu
+    protected static ?string $navigationGroup = 'Transaksi';
+
     // Urutan menu (biar deket Laporan)
     protected static ?int $navigationSort = 4;
 
@@ -135,6 +140,38 @@ class OperationalCostResource extends Resource
             'edit' => Pages\EditOperationalCost::route('/{record}/edit'),
         ];
     }
-    
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+
+        // Cashier cannot see operational costs (admin & finance only)
+        if ($user->role === 'cashier') {
+            return $query->where('id', 0); // Return empty set
+        }
+
+        return $query;
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Finance user can only view, not edit operational costs
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
+    }
+
+    public static function canDelete($record): bool
+    {
+        // Finance user cannot delete operational costs
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
+    }
 }

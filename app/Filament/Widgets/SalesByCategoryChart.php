@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\DB;
 class SalesByCategoryChart extends ChartWidget
 {
     protected static ?string $heading = 'Penjualan per Kategori (Laptop vs Peripheral vs Service)';
-    
-    // Urutan widget di dashboard (biar di bawah kotak angka)
-    protected static ?int $sort = 2;
+
+    protected static ?int $sort = 1; // Appears after StatsOverviewWidget
 
     protected function getData(): array
     {

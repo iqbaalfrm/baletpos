@@ -14,15 +14,18 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    
+
     protected static ?string $navigationLabel = 'Riwayat Transaksi';
-    
+
+    protected static ?string $navigationGroup = 'Transaksi';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -327,5 +330,41 @@ class TransactionResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Finance user can only view, not edit transactions
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
+    }
+
+    public static function canDelete($record): bool
+    {
+        // Finance user cannot delete transactions
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+
+        // Cashier can only see transactions from their user ID
+        if ($user->role === 'cashier') {
+            return $query->where('user_id', Auth::id());
+        }
+
+        // Finance can view all transactions but can't edit/delete
+        // Admin can see everything
+        return $query;
     }
 }

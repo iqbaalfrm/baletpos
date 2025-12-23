@@ -10,19 +10,31 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\WithPagination;
 
 class PosPage extends Page
 {
+    use WithPagination;
+
     // Layout khusus (Full Screen)
     protected static string $layout = 'components.layouts.pos';
-    
+
     // View
     protected static string $view = 'filament.pages.pos-page';
 
     // Navigasi Admin
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static ?string $navigationGroup = 'Transaksi';
+    protected static ?string $navigationLabel = 'POS Kasir';
     protected static ?string $title = 'Point of Sales';
     protected static ?string $slug = 'pos';
+
+    public static function canAccess(): bool
+    {
+        // Only Admin and Cashier can access POS, Finance cannot
+        $user = auth()->user();
+        return $user && ($user->role === 'admin' || $user->role === 'cashier');
+    }
 
     // === VARIABLE DATA UTAMA ===
     public $search = '';
@@ -49,7 +61,17 @@ class PosPage extends Page
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%')
                                              ->orWhere('code', 'like', '%' . $this->search . '%'))
             ->when($this->selectedCategory, fn($q) => $q->where('category_id', $this->selectedCategory))
-            ->get();
+            ->paginate(8);
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSelectedCategory()
+    {
+        $this->resetPage();
     }
 
     public function getCategoriesProperty()
@@ -71,9 +93,19 @@ class PosPage extends Page
                 'name' => $product->name,
                 'price' => $product->selling_price,
                 'qty' => 1,
+                'image_url' => $product->image ? asset('storage/' . $product->image) : null,
+                'category_name' => $product->category->name ?? 'General',
+                'note' => '',
             ];
         }
         $this->calculateTotal();
+    }
+
+    public function updateCartNote($productId, $note)
+    {
+        if (isset($this->cart[$productId])) {
+            $this->cart[$productId]['note'] = $note;
+        }
     }
 
     public function updateQty($productId, $type)
@@ -105,6 +137,15 @@ class PosPage extends Page
         $this->change_amount = ($pay >= $this->total_amount) ? $pay - $this->total_amount : 0;
     }
 
+    // Reset Cart Method
+    public function resetCart()
+    {
+        $this->cart = [];
+        $this->total_amount = 0;
+        $this->payment_amount = 0;
+        $this->change_amount = 0;
+    }
+
     // 3. LOGIC MODAL CHECKOUT
     public function openCheckoutModal()
     {
@@ -113,7 +154,7 @@ class PosPage extends Page
             return;
         }
         // Reset input bayar saat buka modal, kecuali mau default 'Uang Pas' bisa di set disini
-        $this->payment_amount = 0; 
+        $this->payment_amount = 0;
         $this->change_amount = 0;
         $this->customer_name = 'Umum';
         $this->isShowCheckoutModal = true;
@@ -142,27 +183,35 @@ class PosPage extends Page
         DB::transaction(function () {
             // Header Transaksi
             $trx = Transaction::create([
-                'invoice_code' => 'INV/' . date('Ymd') . '/' . Str::upper(Str::random(4)),
+                'invoice_code' => $this->generateInvoiceNumber(),
                 'user_id' => auth()->id(),
                 'total_amount' => $this->total_amount,
                 'payment_amount' => $this->payment_amount,
                 'change_amount' => $this->change_amount,
                 'status' => 'completed',
                 'payment_method' => $this->payment_method,
-                // 'customer_name' => $this->customer_name, 
+                // 'customer_name' => $this->customer_name,
             ]);
 
             // Detail Transaksi & Potong Stok
             foreach ($this->cart as $item) {
                 $product = Product::find($item['id']);
-                TransactionDetail::create([
+
+                $detailData = [
                     'transaction_id' => $trx->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['qty'],
                     'cost_price_at_date' => $product->cost_price,
                     'selling_price_at_date' => $item['price'],
                     'subtotal' => $item['price'] * $item['qty'],
-                ]);
+                ];
+
+                // Add note if it exists and category is Service
+                if ($item['category_name'] === 'Service' && !empty($item['note'])) {
+                    $detailData['note'] = $item['note'];
+                }
+
+                TransactionDetail::create($detailData);
             }
 
             // Simpan ID buat keperluan cetak struk
@@ -187,16 +236,23 @@ class PosPage extends Page
         $this->isShowSuccessModal = false;
         $this->lastTransactionId = null;
     }
-public function printInvoice()
+    public function printInvoice()
     {
         // Redirect ke route cetak struk di tab baru
         // Kita pake JS dispatch biar bisa open new tab (karena redirect PHP biasa gak bisa open tab)
-        
+
         $url = route('print.struk', ['id' => $this->lastTransactionId]);
-        
+
         $this->dispatch('open-print-window', url: $url);
-        
+
         // Tutup modal dan reset
         $this->doneTransaction();
+    }
+
+    private function generateInvoiceNumber(): string
+    {
+        $date = now()->format('Ymd');
+        $random = Str::upper(Str::random(4));
+        return "INV/{$date}/{$random}";
     }
 }

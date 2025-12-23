@@ -12,12 +12,17 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class PurchaseResource extends Resource
 {
     protected static ?string $model = Purchase::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
+
+    protected static ?string $navigationGroup = 'Transaksi';
+
+    protected static ?string $navigationLabel = 'Pembelian';
 
     public static function form(Form $form): Form
 {
@@ -99,13 +104,43 @@ class PurchaseResource extends Resource
     {
         return $table
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('purchase_date')
+                    ->label('Tanggal Beli')
+                    ->date('d M Y')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('supplier.name')
+                    ->label('Supplier')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('user.name')
+                    ->label('Pembeli')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('total_amount')
+                    ->label('Total Pembelian')
+                    ->money('IDR')
+                    ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
-                //
+                Tables\Filters\Filter::make('purchase_date')
+                    ->form([
+                        Forms\Components\DatePicker::make('purchase_from')->label('Dari Tanggal'),
+                        Forms\Components\DatePicker::make('purchase_until')->label('Sampai Tanggal'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when($data['purchase_from'], fn (Builder $query, $date) => $query->whereDate('purchase_date', '>=', $date))
+                            ->when($data['purchase_until'], fn (Builder $query, $date) => $query->whereDate('purchase_date', '<=', $date));
+                    }),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -128,5 +163,39 @@ class PurchaseResource extends Resource
             'create' => Pages\CreatePurchase::route('/create'),
             'edit' => Pages\EditPurchase::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+
+        // Cashier cannot see purchase records (admin & finance can view)
+        if ($user->role === 'cashier') {
+            return $query->where('id', 0); // Return empty set
+        }
+
+        return $query;
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Finance user can only view, not edit purchases
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
+    }
+
+    public static function canDelete($record): bool
+    {
+        // Finance user cannot delete purchases
+        $user = auth()->user();
+        if ($user->role === 'finance') {
+            return false;
+        }
+        return $user->role === 'admin';
     }
 }

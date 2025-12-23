@@ -16,7 +16,7 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
-        // Nanti kita tambah 'role' di sini
+        'role',
     ];
 
     protected $hidden = [
@@ -27,12 +27,27 @@ class User extends Authenticatable implements FilamentUser
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'role' => 'string',
     ];
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Sementara return true dulu biar semua user bisa login
-        // Nanti kita filter pas udah pasang Roles (Admin/Kasir)
-        return true;
+        // Allow access based on all three roles
+        return in_array($this->role, ['admin', 'cashier', 'finance']);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isCashier(): bool
+    {
+        return $this->role === 'cashier';
+    }
+
+    public function isFinance(): bool
+    {
+        return $this->role === 'finance';
     }
 }

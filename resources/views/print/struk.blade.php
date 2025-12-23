@@ -108,7 +108,7 @@
 </head>
 <body onload="window.print()"> <div class="container">
         <div class="header">
-            <div class="store-name">ONET COMPUTER</div> 
+            <div class="store-name">BALET COMPUTER</div> 
             <div class="store-address">Jalan Prof. Moh. Yamin No 57 Kudaile Slawi Kab. Tegal</div>
         </div>
 

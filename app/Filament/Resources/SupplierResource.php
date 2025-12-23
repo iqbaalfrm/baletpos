@@ -16,8 +16,10 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class SupplierResource extends Resource
 {
     protected static ?string $model = Supplier::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-truck'; // Ganti Icon
+    protected static ?string $navigationLabel = 'Supplier'; // Ganti Label Menu
+    protected static ?string $modelLabel = 'Supplier'; // Ganti Label Judul
+    protected static ?string $navigationGroup = 'Data Master';
 
     public static function form(Form $form): Form
     {
