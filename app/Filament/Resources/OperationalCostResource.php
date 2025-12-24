@@ -10,65 +10,56 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class OperationalCostResource extends Resource
 {
     protected static ?string $model = OperationalCost::class;
 
-    // Ganti icon biar sesuai (uang keluar)
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
-    // Ganti label menu
-    protected static ?string $navigationLabel = 'Biaya Operasional';
-    protected static ?string $pluralModelLabel = 'Biaya Operasional';
-    
-    // Grouping menu
-    protected static ?string $navigationGroup = 'Transaksi';
+    protected static ?string $navigationGroup = 'Keuangan';
 
-    // Urutan menu (biar deket Laporan)
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationLabel = 'Biaya Operasional';
+
+    protected static ?string $pluralLabel = 'Biaya Operasional';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Input Pengeluaran')
+                Forms\Components\Section::make()
                     ->schema([
                         Forms\Components\DatePicker::make('date')
                             ->label('Tanggal')
-                            ->default(now())
-                            ->required(),
-
+                            ->required()
+                            ->default(now()),
+                        
                         Forms\Components\Select::make('category')
                             ->label('Kategori')
                             ->options([
-                                'Listrik & Air' => 'Listrik & Air',
-                                'Gaji Karyawan' => 'Gaji Karyawan',
-                                'Sewa Tempat' => 'Sewa Tempat',
-                                'Internet' => 'Internet',
-                                'ATK' => 'ATK / Perlengkapan',
-                                'Maintenance' => 'Maintenance / Perbaikan',
-                                'Lainnya' => 'Lainnya',
+                                'listrik' => 'Listrik',
+                                'air' => 'Air',
+                                'gaji' => 'Gaji',
+                                'atk' => 'ATK',
+                                'perlengkapan' => 'Perlengkapan',
+                                'pemeliharaan' => 'Pemeliharaan',
+                                'transportasi' => 'Transportasi',
+                                'lainnya' => 'Lainnya',
                             ])
-                            ->required()
-                            ->searchable(),
-
-                        Forms\Components\TextInput::make('amount')
-                            ->label('Jumlah (Rp)')
-                            ->numeric()
-                            ->prefix('Rp')
                             ->required(),
-
-                        Forms\Components\Textarea::make('description')
-                            ->label('Keterangan Detail')
-                            ->columnSpanFull(),
-
-                        // Hidden input: Otomatis isi ID user yang login
-                        Forms\Components\Hidden::make('user_id')
-                            ->default(auth()->id()),
+                        
+                        Forms\Components\TextInput::make('description')
+                            ->label('Deskripsi')
+                            ->maxLength(255),
+                        
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Jumlah')
+                            ->prefix('Rp')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1),
                     ])
-                    ->columns(2)
+                    ->columns(2),
             ]);
     }
 
@@ -77,49 +68,73 @@ class OperationalCostResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('date')
-                    ->date('d M Y')
                     ->label('Tanggal')
+                    ->date('d/m/Y')
                     ->sortable(),
-
+                
                 Tables\Columns\TextColumn::make('category')
                     ->label('Kategori')
-                    ->badge() // Biar warna-warni
-                    ->color(fn (string $state): string => match ($state) {
-                        'Gaji Karyawan' => 'warning',
-                        'Listrik & Air' => 'info',
-                        'Lainnya' => 'gray',
-                        default => 'danger',
-                    }),
-
+                    ->badge()
+                    ->formatStateUsing(function ($state) {
+                        $categories = [
+                            'listrik' => 'Listrik',
+                            'air' => 'Air',
+                            'gaji' => 'Gaji',
+                            'atk' => 'ATK',
+                            'perlengkapan' => 'Perlengkapan',
+                            'pemeliharaan' => 'Pemeliharaan',
+                            'transportasi' => 'Transportasi',
+                            'lainnya' => 'Lainnya',
+                        ];
+                        return $categories[$state] ?? ucfirst($state);
+                    })
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('description')
-                    ->label('Keterangan')
-                    ->limit(30),
-
+                    ->label('Deskripsi')
+                    ->searchable(),
+                
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Jumlah')
                     ->money('IDR')
-                    ->sortable()
-                    ->summarize([
-                        Tables\Columns\Summarizers\Sum::make()->money('IDR'), // Total di bawah tabel
-                    ]),
-
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('Diinput Oleh')
+                    ->label('Dibuat Oleh')
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Dibuat Pada')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('date', 'desc') // Urutkan dari yang terbaru
             ->filters([
-                // Filter berdasarkan Rentang Tanggal
-                Tables\Filters\Filter::make('created_at')
-                ->form([
-                    Forms\Components\DatePicker::make('created_from')->label('Dari Tanggal'),
-                    Forms\Components\DatePicker::make('created_until')->label('Sampai Tanggal'),
-                ])
-                ->query(function ($query, array $data) {
-                    return $query
-                        ->when($data['created_from'], fn ($query, $date) => $query->whereDate('date', '>=', $date))
-                        ->when($data['created_until'], fn ($query, $date) => $query->whereDate('date', '<=', $date));
-                })
+                Tables\Filters\SelectFilter::make('category')
+                    ->label('Kategori')
+                    ->options([
+                        'listrik' => 'Listrik',
+                        'air' => 'Air',
+                        'gaji' => 'Gaji',
+                        'atk' => 'ATK',
+                        'perlengkapan' => 'Perlengkapan',
+                        'pemeliharaan' => 'Pemeliharaan',
+                        'transportasi' => 'Transportasi',
+                        'lainnya' => 'Lainnya',
+                    ]),
+                
+                Tables\Filters\Filter::make('date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date_from')
+                            ->label('Dari Tanggal'),
+                        Forms\Components\DatePicker::make('date_until')
+                            ->label('Sampai Tanggal'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when($data['date_from'], fn (Builder $query, $date) => $query->whereDate('date', '>=', $date))
+                            ->when($data['date_until'], fn (Builder $query, $date) => $query->whereDate('date', '<=', $date));
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -129,7 +144,17 @@ class OperationalCostResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('date', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -139,39 +164,5 @@ class OperationalCostResource extends Resource
             'create' => Pages\CreateOperationalCost::route('/create'),
             'edit' => Pages\EditOperationalCost::route('/{record}/edit'),
         ];
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery();
-
-        $user = auth()->user();
-
-        // Cashier cannot see operational costs (admin & finance only)
-        if ($user->role === 'cashier') {
-            return $query->where('id', 0); // Return empty set
-        }
-
-        return $query;
-    }
-
-    public static function canEdit($record): bool
-    {
-        // Finance user can only view, not edit operational costs
-        $user = auth()->user();
-        if ($user->role === 'finance') {
-            return false;
-        }
-        return $user->role === 'admin';
-    }
-
-    public static function canDelete($record): bool
-    {
-        // Finance user cannot delete operational costs
-        $user = auth()->user();
-        if ($user->role === 'finance') {
-            return false;
-        }
-        return $user->role === 'admin';
     }
 }

@@ -142,7 +142,7 @@ class ProductResource extends Resource
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Foto')
                     ->circular(), // Biar bunder (opsional)
-                    
+
                 Tables\Columns\TextColumn::make('category.name')
                     ->sortable()
                     ->badge()
@@ -156,7 +156,7 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('stock')
                     ->numeric()
                     ->sortable()
-                    ->color(fn (string $state, Product $record): string => $state <= $record->min_stock ? 'danger' : 'success')
+                    ->color(fn (string $state, Product $record): string => $state < 3 ? 'danger' : ($state <= $record->min_stock ? 'warning' : 'success'))
                     ->label('Stok'),
 
                 Tables\Columns\IconColumn::make('is_active')
@@ -180,7 +180,9 @@ class ProductResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100]);
     }
 
     public static function getRelations(): array

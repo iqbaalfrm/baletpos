@@ -69,6 +69,17 @@ class TransactionResource extends Resource
                                         'void' => 'Dibatalkan (Void)',
                                     ])
                                     ->disabled(),
+
+                                Forms\Components\TextInput::make('void_by_user_name')
+                                    ->label('Dibatalkan Oleh')
+                                    ->formatStateUsing(fn ($record) => $record->voidByUser?->name ?? '-')
+                                    ->visible(fn ($record) => $record?->is_void)
+                                    ->readOnly(),
+
+                                Forms\Components\Textarea::make('void_reason')
+                                    ->label('Alasan Pembatalan')
+                                    ->visible(fn ($record) => $record?->is_void)
+                                    ->readOnly(),
                             ])
                             ->columns(2),
                     ])
@@ -159,7 +170,21 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Bayar')
                     ->badge()
-                    ->color('info'),
+                    ->color('info')
+                    ->formatStateUsing(function ($record) {
+                        if ($record->payment_method === 'split_payment') {
+                            $paymentMethods = $record->paymentMethods;
+                            if ($paymentMethods->count() > 0) {
+                                $paymentLabels = [];
+                                foreach ($paymentMethods as $paymentMethod) {
+                                    $paymentLabels[] = $paymentMethod->name . ': ' . number_format($paymentMethod->pivot->amount_paid, 0, ',', '.');
+                                }
+                                return implode(', ', $paymentLabels);
+                            }
+                            return 'Split Payment';
+                        }
+                        return ucfirst(str_replace('_', ' ', $record->payment_method));
+                    }),
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -291,7 +316,13 @@ class TransactionResource extends Resource
                     ->modalHeading('Batalkan Transaksi (Void)')
                     ->modalDescription('Apakah anda yakin? Stok akan dikembalikan dan transaksi ditandai sebagai VOID.')
                     ->visible(fn (Transaction $record) => auth()->user()->isAdmin() && $record->status !== 'void')
-                    ->action(function (Transaction $record) {
+                    ->form([
+                        Forms\Components\Textarea::make('void_reason')
+                            ->label('Alasan Pembatalan')
+                            ->required()
+                            ->placeholder('Masukkan alasan pembatalan transaksi'),
+                    ])
+                    ->action(function (Transaction $record, array $data) {
                         if ($record->status === 'void') return;
 
                         foreach ($record->details as $detail) {
@@ -301,8 +332,12 @@ class TransactionResource extends Resource
                             }
                         }
 
-                        $record->update(['status' => 'void']);
-                        
+                        $record->update([
+                            'status' => 'void',
+                            'void_by' => auth()->id(),
+                            'void_reason' => $data['void_reason'],
+                        ]);
+
                         Notification::make()->title('Transaksi berhasil di-VOID')->success()->send();
                     }),
             ])
@@ -310,7 +345,9 @@ class TransactionResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100]);
     }
 
     public static function getRelations(): array
@@ -354,7 +391,7 @@ class TransactionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()->with(['user', 'paymentMethods', 'voidByUser']);
 
         $user = auth()->user();
 

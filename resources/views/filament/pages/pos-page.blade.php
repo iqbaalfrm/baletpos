@@ -147,6 +147,18 @@
                                     </textarea>
                                 </div>
                             @endif
+
+                            <!-- Serial Number Input for Laptops -->
+                            @if(str_contains(strtolower($item['category_name']), 'laptop') || str_contains(strtolower($item['name']), 'laptop'))
+                                <div class="mt-3">
+                                    <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Serial Number (SN):</label>
+                                    <input
+                                        wire:model.live="cart.{{ $id }}.serial_number"
+                                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Masukkan serial number..."
+                                        type="text">
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-2 border border-slate-300 dark:border-slate-700">
@@ -179,9 +191,20 @@
         <div class="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row">
 
             <div class="p-6 md:w-1/2 space-y-6 border-b border-slate-200 md:border-b-0 md:border-r dark:border-slate-800">
-                <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <x-heroicon-o-credit-card class="w-6 h-6 text-emerald-600 dark:text-emerald-500"/> Pembayaran
-                </h3>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <x-heroicon-o-credit-card class="w-6 h-6 text-emerald-600 dark:text-emerald-500"/> Pembayaran
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-600 dark:text-slate-400">Split Payment</span>
+                        <button
+                            wire:click="toggleSplitPayment"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none {{ $is_split_payment ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600' }}"
+                        >
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $is_split_payment ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                        </button>
+                    </div>
+                </div>
 
                 <div class="space-y-3">
                     <div class="bg-blue-100/50 dark:bg-blue-600/20 border border-blue-200 dark:border-blue-600/30 rounded-xl p-4">
@@ -195,6 +218,8 @@
                     </div>
                 </div>
 
+                <!-- Traditional Payment Method -->
+                @if(!$is_split_payment)
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-500 uppercase mb-1">Nama Pelanggan</label>
@@ -203,23 +228,26 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-500 uppercase mb-1">Metode Bayar</label>
                         <select wire:model="payment_method" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="cash">Tunai (Cash)</option>
-                            <option value="qris">QRIS</option>
-                            <option value="transfer">Transfer Bank</option>
+                            @foreach($this->paymentMethods as $method)
+                                <option value="{{ $method->code }}">{{ $method->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="p-6 md:w-1/2 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between">
                 <div class="space-y-6">
+                    <!-- Traditional Payment Input -->
+                    @if(!$is_split_payment)
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-2">Nominal Diterima</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500 dark:text-slate-400 font-bold text-lg">Rp</span>
                             <input wire:model.live="payment_amount" type="number"
                                 class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-3xl font-bold rounded-xl pl-12 pr-4 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-300 dark:placeholder-slate-600"
-                                placeholder="0" autofocus>
+                                placeholder="0" wire:ref="paymentInput" wire:blur="updatedPaymentAmount">
                         </div>
                     </div>
 
@@ -234,6 +262,64 @@
                         <button wire:click="setPaymentAmount(50000)" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold py-2 rounded-lg border border-slate-300 dark:border-slate-600 transition">50.000</button>
                         <button wire:click="setPaymentAmount(100000)" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold py-2 rounded-lg border border-slate-300 dark:border-slate-600 transition">100.000</button>
                     </div>
+                    @else
+                    <!-- Split Payment Section -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-400">Metode Pembayaran</label>
+                            <button wire:click="addPaymentMethod" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded-lg">
+                                + Tambah
+                            </button>
+                        </div>
+
+                        @if(count($selected_payment_methods) > 0)
+                        <div class="space-y-3 max-h-60 overflow-y-auto">
+                            @foreach($selected_payment_methods as $index => $payment)
+                            <div class="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-300 dark:border-slate-700">
+                                <div class="flex justify-between items-center mb-2">
+                                    <select
+                                        wire:model.live="selected_payment_methods.{{ $index }}.id"
+                                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm"
+                                    >
+                                        @foreach($this->paymentMethods as $method)
+                                            <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @if(count($selected_payment_methods) > 1)
+                                    <button
+                                        wire:click="removePaymentMethod({{ $index }})"
+                                        class="ml-2 text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400"
+                                    >
+                                        <x-heroicon-o-trash class="w-5 h-5"/>
+                                    </button>
+                                    @endif
+                                </div>
+
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-500 dark:text-slate-400 font-bold">Rp</span>
+                                    <input
+                                        wire:model.live="selected_payment_methods.{{ $index }}.amount"
+                                        type="number"
+                                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded pl-8 pr-2 py-2 text-slate-900 dark:text-white"
+                                        placeholder="0"
+                                        wire:blur="calculateSplitPaymentTotal"
+                                    >
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @else
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Belum ada metode pembayaran</p>
+                        @endif
+
+                        <div class="mt-3 p-3 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                            <div class="flex justify-between text-sm">
+                                <span>Total Pembayaran:</span>
+                                <span class="font-bold">Rp {{ number_format($split_payment_total, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mt-8">
@@ -242,10 +328,12 @@
                         Batal
                     </button>
                     <button wire:click="processPayment"
+                        wire:loading.attr="disabled"
                         class="py-3.5 rounded-xl font-bold text-white shadow-lg shadow-emerald-900/30 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-                        {{ $payment_amount >= $total_amount ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400' }}"
-                        @if($payment_amount < $total_amount) disabled @endif>
-                        Bayar Sekarang
+                        {{ (!$is_split_payment && round($payment_amount, 2) >= round($total_amount, 2)) || ($is_split_payment && round($split_payment_total, 2) >= round($total_amount, 2)) ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400' }}"
+                        @if((!$is_split_payment && round($payment_amount, 2) < round($total_amount, 2)) || ($is_split_payment && round($split_payment_total, 2) < round($total_amount, 2))) disabled @endif>
+                        <span wire:loading.remove wire:target="processPayment">Bayar Sekarang</span>
+                        <span wire:loading wire:target="processPayment">Memproses...</span>
                     </button>
                 </div>
             </div>
@@ -273,15 +361,35 @@
                 <div class="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 mb-6">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-slate-600 dark:text-slate-300">Total Tagihan:</span>
-                        <span class="font-bold">Rp {{ number_format($total_amount, 0, ',', '.') }}</span>
+                        <span class="font-bold">Rp {{ number_format(round($total_amount, 2), 0, ',', '.') }}</span>
                     </div>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-slate-600 dark:text-slate-300">Uang Diterima:</span>
-                        <span class="font-bold">Rp {{ number_format($payment_amount, 0, ',', '.') }}</span>
-                    </div>
+
+                    @if($is_split_payment)
+                        <!-- Split Payment Details -->
+                        <div class="mt-3 space-y-2">
+                            <p class="text-slate-600 dark:text-slate-300 font-semibold">Detail Pembayaran:</p>
+                            @foreach($selected_payment_methods as $payment)
+                                @php
+                                    $method = $this->paymentMethods->firstWhere('id', $payment['id']);
+                                @endphp
+                                @if($method && (float)$payment['amount'] > 0)
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-600 dark:text-slate-300">Bayar {{ $method->name }}:</span>
+                                    <span class="font-bold">Rp {{ number_format(round((float)$payment['amount'], 2), 0, ',', '.') }}</span>
+                                </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-slate-600 dark:text-slate-300">Uang Diterima:</span>
+                            <span class="font-bold">Rp {{ number_format(round($payment_amount, 2), 0, ',', '.') }}</span>
+                        </div>
+                    @endif
+
                     <div class="flex justify-between items-center mt-4 pt-4 border-t border-slate-300 dark:border-slate-700">
                         <span class="text-lg font-bold text-emerald-600 dark:text-emerald-400">Kembalian:</span>
-                        <span class="text-lg font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format($change_amount, 0, ',', '.') }}</span>
+                        <span class="text-lg font-bold text-emerald-600 dark:text-emerald-400">Rp {{ number_format(round($change_amount, 2), 0, ',', '.') }}</span>
                     </div>
                 </div>
 
@@ -307,6 +415,17 @@
         @this.on('open-print-window', (event) => {
             // Buka URL struk di window baru (popup print)
             window.open(event.url, '_blank', 'width=800,height=600');
+        });
+
+        @this.on('payment-modal-opened', () => {
+            // Focus the payment amount input when modal opens
+            const paymentInput = document.querySelector('input[wire\\:model="payment_amount"]');
+            if (paymentInput) {
+                setTimeout(() => {
+                    paymentInput.focus();
+                    paymentInput.select(); // Select all text for easy editing
+                }, 100);
+            }
         });
     });
 </script>

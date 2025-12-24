@@ -39,40 +39,71 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Laptop & Peripheral Sales -->
+        <!-- Laptop Sales -->
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden border border-gray-200 dark:border-gray-700">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <h3 class="font-bold text-lg">Laporan Penjualan Produk</h3>
-                <p class="text-xs text-gray-500">Laptop, Peripheral, dll.</p>
+                <h3 class="font-bold text-lg">Laporan Penjualan Laptop</h3>
+                <p class="text-xs text-gray-500">Detail penjualan produk laptop</p>
             </div>
             <table class="w-full text-sm text-left">
                 <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 uppercase">
                     <tr>
-                        <th class="px-4 py-3">Kategori</th>
+                        <th class="px-4 py-3">Produk</th>
                         <th class="px-4 py-3 text-center">Qty Terjual</th>
                         <th class="px-4 py-3 text-right">Total Omset</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @forelse($sales_by_category as $cat)
+                    @forelse($sales_by_laptop as $laptop)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td class="px-4 py-3 font-medium">{{ $cat->category_name }}</td>
-                        <td class="px-4 py-3 text-center">{{ $cat->total_qty }}</td>
-                        <td class="px-4 py-3 text-right font-bold">Rp {{ number_format($cat->total_omset, 0, ',', '.') }}</td>
+                        <td class="px-4 py-3 font-medium">{{ $laptop->product_name }}</td>
+                        <td class="px-4 py-3 text-center">{{ $laptop->total_qty }}</td>
+                        <td class="px-4 py-3 text-right font-bold">Rp {{ number_format($laptop->total_omset, 0, ',', '.') }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="3" class="px-4 py-6 text-center text-gray-500">Belum ada data penjualan.</td>
+                        <td colspan="3" class="px-4 py-6 text-center text-gray-500">Belum ada data penjualan laptop.</td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
+        <!-- Peripheral Sales -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <h3 class="font-bold text-lg">Laporan Penjualan Peripheral</h3>
+                <p class="text-xs text-gray-500">Aksesoris dan perangkat pendukung</p>
+            </div>
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 uppercase">
+                    <tr>
+                        <th class="px-4 py-3">Produk</th>
+                        <th class="px-4 py-3 text-center">Qty Terjual</th>
+                        <th class="px-4 py-3 text-right">Total Omset</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse($sales_by_peripheral as $peripheral)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td class="px-4 py-3 font-medium">{{ $peripheral->product_name }}</td>
+                        <td class="px-4 py-3 text-center">{{ $peripheral->total_qty }}</td>
+                        <td class="px-4 py-3 text-right font-bold">Rp {{ number_format($peripheral->total_omset, 0, ',', '.') }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="3" class="px-4 py-6 text-center text-gray-500">Belum ada data penjualan peripheral.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <!-- Technician Services Sales -->
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden border border-gray-200 dark:border-gray-700">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <h3 class="font-bold text-lg">Laporan Teknisi</h3>
+                <h3 class="font-bold text-lg">Laporan Teknisi/Service</h3>
                 <p class="text-xs text-gray-500">Jasa Service & Teknisi</p>
             </div>
             <table class="w-full text-sm text-left">
@@ -98,6 +129,37 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- All Categories Sales -->
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <h3 class="font-bold text-lg">Laporan Semua Kategori</h3>
+                <p class="text-xs text-gray-500">Ringkasan semua kategori produk</p>
+            </div>
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 uppercase">
+                    <tr>
+                        <th class="px-4 py-3">Kategori</th>
+                        <th class="px-4 py-3 text-center">Qty Terjual</th>
+                        <th class="px-4 py-3 text-right">Total Omset</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse($sales_by_category as $cat)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td class="px-4 py-3 font-medium">{{ $cat->category_name }}</td>
+                        <td class="px-4 py-3 text-center">{{ $cat->total_qty }}</td>
+                        <td class="px-4 py-3 text-right font-bold">Rp {{ number_format($cat->total_omset, 0, ',', '.') }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="3" class="px-4 py-6 text-center text-gray-500">Belum ada data penjualan.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">

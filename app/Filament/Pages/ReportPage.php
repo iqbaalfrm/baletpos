@@ -42,6 +42,8 @@ class ReportPage extends Page implements HasForms
     public $laba_bersih = 0; // Poin 10
 
     public $sales_by_category = []; // Poin 5, 6, 7
+    public $sales_by_laptop = [];
+    public $sales_by_peripheral = [];
     public $sales_by_technician = [];
     public $total_aset = 0; // Poin 8
 
@@ -110,22 +112,50 @@ class ReportPage extends Page implements HasForms
             ->groupBy('categories.name')
             ->get();
 
-        // 3. Hitung PENJUALAN PER TEKNISI (Poin 6 - Teknisi Report)
-        // Assuming we have technician services in categories like 'Service'
-        $this->sales_by_technician = TransactionDetail::query()
+        // Specific reports for Laptop, Peripheral, and Technician/Service
+        $this->sales_by_laptop = TransactionDetail::query()
             ->join('products', 'transaction_details.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->whereBetween('transactions.created_at', [$start, $end])
             ->where('transactions.status', 'completed')
-            ->where('categories.name', 'like', '%Service%') // Assuming service categories contain 'Service'
+            ->where(function($query) {
+                $query->where('categories.name', 'like', '%Laptop%')
+                      ->orWhere('products.name', 'like', '%Laptop%')
+                      ->orWhere('products.code', 'like', '%LAPTOP%');
+            })
             ->select(
-                'products.name as service_name',
+                'products.name as product_name',
                 DB::raw('sum(transaction_details.quantity) as total_qty'),
                 DB::raw('sum(transaction_details.subtotal) as total_omset')
             )
             ->groupBy('products.name')
             ->get();
+
+        $this->sales_by_peripheral = TransactionDetail::query()
+            ->join('products', 'transaction_details.product_id', '=', 'products.id')
+            ->join('categories', 'products.category_id', '=', 'categories.id')
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->whereBetween('transactions.created_at', [$start, $end])
+            ->where('transactions.status', 'completed')
+            ->where(function($query) {
+                $query->where('categories.name', 'like', '%Aksesoris%')
+                      ->orWhere('categories.name', 'like', '%Peripheral%')
+                      ->orWhere('products.name', 'like', '%Aksesoris%')
+                      ->orWhere('products.name', 'like', '%Peripheral%')
+                      ->orWhere('products.code', 'like', '%AKS%')
+                      ->orWhere('products.code', 'like', '%PER%');
+            })
+            ->select(
+                'products.name as product_name',
+                DB::raw('sum(transaction_details.quantity) as total_qty'),
+                DB::raw('sum(transaction_details.subtotal) as total_omset')
+            )
+            ->groupBy('products.name')
+            ->get();
+
+        // 3. Hitung PENJUALAN PER TEKNISI (Poin 6 - Teknisi Report)
+        // Using the more specific query defined above
 
         // 4. Hitung VALUASI ASET (Poin 8)
         // Total duit yang mandeg di stok gudang saat ini

@@ -148,6 +148,11 @@
                     <td class="text-center">{{ $detail->quantity }}</td>
                     <td class="text-right">0</td> <td class="text-right">{{ number_format($detail->subtotal, 0, ',', '.') }}</td>
                 </tr>
+                @if($detail->serial_number)
+                <tr>
+                    <td colspan="7" class="text-xs text-slate-600 pl-5">SN: {{ $detail->serial_number }}</td>
+                </tr>
+                @endif
                 @endforeach
             </tbody>
         </table>
@@ -156,7 +161,7 @@
             <table class="totals-table">
                 <tr>
                     <td>Total Harga</td>
-                    <td>{{ number_format($transaction->total_amount, 0, ',', '.') }}</td>
+                    <td>{{ number_format(round($transaction->total_amount, 2), 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Diskon</td>
@@ -164,19 +169,38 @@
                 </tr>
                 <tr class="grand-total">
                     <td>Total Bayar</td>
-                    <td>{{ number_format($transaction->total_amount, 0, ',', '.') }}</td>
+                    <td>{{ number_format(round($transaction->total_amount, 2), 0, ',', '.') }}</td>
                 </tr>
-                <tr>
-                    <td>Metode Bayar</td>
-                    <td>{{ ucfirst($transaction->payment_method) }}</td>
-                </tr>
-                <tr>
-                    <td>Tunai</td>
-                    <td>{{ number_format($transaction->payment_amount, 0, ',', '.') }}</td>
-                </tr>
+
+                @if($transaction->payment_method === 'split_payment')
+                    <!-- Split Payment Details -->
+                    <tr>
+                        <td colspan="2" style="padding-top: 10px; border-top: 1px dashed #000;">Detail Pembayaran:</td>
+                    </tr>
+                    @foreach($transaction->paymentMethods as $paymentMethod)
+                    <tr>
+                        <td>Bayar {{ $paymentMethod->name }}:</td>
+                        <td>{{ number_format(round($paymentMethod->pivot->amount_paid, 2), 0, ',', '.') }}</td>
+                    </tr>
+                    @endforeach
+                    <tr>
+                        <td>Total Diterima:</td>
+                        <td>{{ number_format(round($transaction->total_paid, 2), 0, ',', '.') }}</td>
+                    </tr>
+                @else
+                    <tr>
+                        <td>Metode Bayar</td>
+                        <td>{{ ucfirst(str_replace('_', ' ', $transaction->payment_method)) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Tunai</td>
+                        <td>{{ number_format(round($transaction->total_paid ?? $transaction->payment_amount, 2), 0, ',', '.') }}</td>
+                    </tr>
+                @endif
+
                 <tr>
                     <td>Kembali</td>
-                    <td>{{ number_format($transaction->change_amount, 0, ',', '.') }}</td>
+                    <td>{{ number_format(round($transaction->change_amount, 2), 0, ',', '.') }}</td>
                 </tr>
             </table>
         </div>
@@ -184,6 +208,7 @@
         <div class="footer">
             <p>Barang yang sudah dibeli tidak dapat dikembalikan / ditukar.</p>
             <p>*** TERIMA KASIH ATAS KUNJUNGAN ANDA ***</p>
+            <p>Terima kasih telah berbelanja di Balet Computer. Simpan nota ini untuk klaim garansi SN.</p>
         </div>
     </div>
 

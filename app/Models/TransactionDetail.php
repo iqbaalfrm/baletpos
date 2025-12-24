@@ -10,7 +10,16 @@ class TransactionDetail extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'transaction_id',
+        'product_id',
+        'quantity',
+        'cost_price_at_date',
+        'selling_price_at_date',
+        'subtotal',
+        'note',
+        'serial_number',
+    ];
 
     // Relasi ke Header Transaksi (PENTING BIAR GAK ERROR!)
     public function transaction(): BelongsTo
